@@ -1,4 +1,6 @@
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 // Stores all successfully booked appointments during the app session.
 final List<Map<String, String>> bookedAppointments = [];
@@ -603,6 +605,54 @@ class _AppointmentPageState
     }
   }
 
+  String _appointmentText(Map<String, String> appointment) {
+    return '''
+MediCare Hospital
+
+APPOINTMENT DETAILS
+-------------------
+Patient: ${appointment["patient"]}
+Age: ${appointment["age"]}
+Gender: ${appointment["gender"]}
+Phone: ${appointment["phone"]}
+Department: ${appointment["department"]}
+Doctor: ${appointment["doctor"]}
+Date: ${appointment["date"]}
+Time: ${appointment["time"]}
+Reason: ${appointment["reason"]}
+
+Status: Appointment Booked Successfully
+''';
+  }
+
+  void _downloadAppointment(Map<String, String> appointment) {
+    final text = _appointmentText(appointment);
+    final blob = html.Blob([text], 'text/plain');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    final anchor = html.AnchorElement(href: url)
+      ..setAttribute('download', 'medicare_appointment.txt')
+      ..click();
+    html.Url.revokeObjectUrl(url);
+  }
+
+  Future<void> _shareAppointment(Map<String, String> appointment) async {
+    final text = _appointmentText(appointment);
+
+    await Clipboard.setData(
+      ClipboardData(text: text),
+    );
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          "Appointment details copied. Paste them in WhatsApp, Gmail, or any app to share.",
+        ),
+      ),
+    );
+  }
+
   void submitAppointment() {
     if (!formKey.currentState!.validate()) {
       return;
@@ -635,21 +685,33 @@ class _AppointmentPageState
           : reasonController.text.trim(),
     });
 
+    final appointment = bookedAppointments.last;
+
     showDialog(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text(
-            "Appointment Booked Successfully",
-          ),
+          title: const Text("Appointment Booked Successfully"),
           content: const Text(
-            "Your appointment has been saved. You can view it anytime from the My Appointments icon.",
+            "Your appointment has been saved. You can download or share the appointment details.",
           ),
           actions: [
-            TextButton(
+            TextButton.icon(
               onPressed: () {
-                Navigator.pop(dialogContext);
+                _downloadAppointment(appointment);
               },
+              icon: const Icon(Icons.download),
+              label: const Text("Download"),
+            ),
+            TextButton.icon(
+              onPressed: () async {
+                await _shareAppointment(appointment);
+              },
+              icon: const Icon(Icons.share),
+              label: const Text("Share"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text("OK"),
             ),
           ],
@@ -1900,3 +1962,4 @@ class DepartmentsPage extends StatelessWidget {
     );
   }
 }
+
