@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -63,9 +64,7 @@ class LoginPage extends StatelessWidget {
                   size: 60,
                   color: Colors.blue,
                 ),
-
                 const SizedBox(height: 15),
-
                 const Text(
                   "MediCare Hospital",
                   style: TextStyle(
@@ -74,9 +73,7 @@ class LoginPage extends StatelessWidget {
                     color: Colors.blue,
                   ),
                 ),
-
                 const SizedBox(height: 5),
-
                 const Text(
                   "Login to continue",
                   style: TextStyle(
@@ -84,9 +81,7 @@ class LoginPage extends StatelessWidget {
                     fontSize: 15,
                   ),
                 ),
-
                 const SizedBox(height: 30),
-
                 TextField(
                   decoration: InputDecoration(
                     labelText: "Email",
@@ -96,9 +91,7 @@ class LoginPage extends StatelessWidget {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 20),
-
                 TextField(
                   obscureText: true,
                   decoration: InputDecoration(
@@ -109,9 +102,7 @@ class LoginPage extends StatelessWidget {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 25),
-
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -135,9 +126,7 @@ class LoginPage extends StatelessWidget {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
                 TextButton(
                   onPressed: () {},
                   child: const Text("Forgot Password?"),
@@ -155,8 +144,193 @@ class LoginPage extends StatelessWidget {
 // HOME PAGE
 // ======================================================
 
-class HospitalHomePage extends StatelessWidget {
+class HospitalHomePage extends StatefulWidget {
   const HospitalHomePage({super.key});
+
+  @override
+  State<HospitalHomePage> createState() =>
+      _HospitalHomePageState();
+}
+
+class _HospitalHomePageState extends State<HospitalHomePage> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _timer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) {
+        if (mounted) {
+          setState(() {});
+        }
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  DateTime? _getAppointmentDateTime(
+    Map<String, String> appointment,
+  ) {
+    try {
+      final dateParts = appointment["date"]!.split('/');
+      final timeParts = appointment["time"]!.split(' ');
+      final clock = timeParts[0].split(':');
+
+      int hour = int.parse(clock[0]);
+      final minute = int.parse(clock[1]);
+
+      final period =
+          timeParts.length > 1
+              ? timeParts[1].toUpperCase()
+              : '';
+
+      if (period == 'PM' && hour != 12) {
+        hour += 12;
+      }
+
+      if (period == 'AM' && hour == 12) {
+        hour = 0;
+      }
+
+      return DateTime(
+        int.parse(dateParts[2]),
+        int.parse(dateParts[1]),
+        int.parse(dateParts[0]),
+        hour,
+        minute,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Map<String, String>? _nextAppointment() {
+    final now = DateTime.now();
+
+    Map<String, String>? next;
+    DateTime? nextTime;
+
+    for (final appointment in bookedAppointments) {
+      final appointmentTime =
+          _getAppointmentDateTime(appointment);
+
+      if (appointmentTime != null &&
+          appointmentTime.isAfter(now)) {
+        if (nextTime == null ||
+            appointmentTime.isBefore(nextTime)) {
+          next = appointment;
+          nextTime = appointmentTime;
+        }
+      }
+    }
+
+    return next;
+  }
+
+  String _timeLeft(DateTime appointmentTime) {
+    final difference =
+        appointmentTime.difference(DateTime.now());
+
+    if (difference.isNegative) {
+      return "Appointment time reached";
+    }
+
+    final days = difference.inDays;
+    final hours =
+        difference.inHours.remainder(24);
+    final minutes =
+        difference.inMinutes.remainder(60);
+    final seconds =
+        difference.inSeconds.remainder(60);
+
+    if (days > 0) {
+      return "${days}d ${hours}h ${minutes}m ${seconds}s";
+    }
+
+    if (hours > 0) {
+      return "${hours}h ${minutes}m ${seconds}s";
+    }
+
+    return "${minutes}m ${seconds}s";
+  }
+
+  Widget _appointmentCountdown() {
+    final appointment = _nextAppointment();
+
+    if (appointment == null) {
+      return const SizedBox.shrink();
+    }
+
+    final appointmentDateTime =
+        _getAppointmentDateTime(appointment);
+
+    if (appointmentDateTime == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Colors.blue.shade200,
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.timer,
+            color: Colors.blue,
+            size: 32,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Time Left for Your Appointment",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _timeLeft(appointmentDateTime),
+                  style: const TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  "${appointment["patient"]} • ${appointment["doctor"]}",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -164,7 +338,9 @@ class HospitalHomePage extends StatelessWidget {
       appBar: AppBar(
         title: const Text(
           "MediCare Hospital",
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
         ),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
@@ -175,7 +351,8 @@ class HospitalHomePage extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const MyAppointmentsPage(),
+                  builder: (context) =>
+                      const MyAppointmentsPage(),
                 ),
               );
             },
@@ -186,7 +363,8 @@ class HospitalHomePage extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const EmergencyPage(),
+                  builder: (context) =>
+                      const EmergencyPage(),
                 ),
               );
             },
@@ -194,11 +372,11 @@ class HospitalHomePage extends StatelessWidget {
           ),
         ],
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
           children: [
             const Text(
               "Welcome 👋",
@@ -207,9 +385,7 @@ class HospitalHomePage extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-
             const SizedBox(height: 5),
-
             const Text(
               "How can we help you today?",
               style: TextStyle(
@@ -217,40 +393,45 @@ class HospitalHomePage extends StatelessWidget {
                 fontSize: 16,
               ),
             ),
-
             const SizedBox(height: 20),
-
             TextField(
               decoration: InputDecoration(
-                hintText: "Search doctors or departments",
-                prefixIcon: const Icon(Icons.search),
+                hintText:
+                    "Search doctors or departments",
+                prefixIcon:
+                    const Icon(Icons.search),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
+                  borderRadius:
+                      BorderRadius.circular(15),
                 ),
               ),
             ),
-
             const SizedBox(height: 20),
 
-            // EMERGENCY
+            _appointmentCountdown(),
+
             InkWell(
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const EmergencyPage(),
+                    builder: (context) =>
+                        const EmergencyPage(),
                   ),
                 );
               },
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(20),
+                padding:
+                    const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: Colors.red,
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius:
+                      BorderRadius.circular(18),
                 ),
                 child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
                   children: [
                     Icon(
                       Icons.emergency,
@@ -263,7 +444,8 @@ class HospitalHomePage extends StatelessWidget {
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 21,
-                        fontWeight: FontWeight.bold,
+                        fontWeight:
+                            FontWeight.bold,
                       ),
                     ),
                     SizedBox(height: 5),
@@ -337,7 +519,6 @@ class HospitalHomePage extends StatelessWidget {
 
             const SizedBox(height: 15),
 
-            // ABOUT HOSPITAL
             _infoCard(
               context,
               Icons.info_outline,
@@ -346,7 +527,6 @@ class HospitalHomePage extends StatelessWidget {
               const AboutHospitalPage(),
             ),
 
-            // OPENING HOURS
             _infoCard(
               context,
               Icons.access_time,
@@ -355,7 +535,6 @@ class HospitalHomePage extends StatelessWidget {
               const OpeningHoursPage(),
             ),
 
-            // FACILITIES
             _infoCard(
               context,
               Icons.medical_services,
@@ -366,43 +545,43 @@ class HospitalHomePage extends StatelessWidget {
 
             const SizedBox(height: 25),
 
-            // CONTACT
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(20),
+              padding:
+                  const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.blue,
-                borderRadius: BorderRadius.circular(18),
+                borderRadius:
+                    BorderRadius.circular(18),
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   const Text(
                     "Need Help?",
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 21,
-                      fontWeight: FontWeight.bold,
+                      fontWeight:
+                          FontWeight.bold,
                     ),
                   ),
-
                   const SizedBox(height: 8),
-
                   const Text(
                     "Contact our hospital team.",
                     style: TextStyle(
                       color: Colors.white70,
                     ),
                   ),
-
                   const SizedBox(height: 15),
-
                   ElevatedButton(
                     onPressed: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const ContactPage(),
+                          builder: (context) =>
+                              const ContactPage(),
                         ),
                       );
                     },
@@ -419,8 +598,8 @@ class HospitalHomePage extends StatelessWidget {
         ),
       ),
 
-      // BOTTOM NAVIGATION
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar:
+          BottomNavigationBar(
         currentIndex: 0,
         selectedItemColor: Colors.blue,
         onTap: (index) {
@@ -428,7 +607,8 @@ class HospitalHomePage extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const AppointmentPage(),
+                builder: (context) =>
+                    const AppointmentPage(),
               ),
             );
           }
@@ -437,7 +617,8 @@ class HospitalHomePage extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const DoctorsPage(),
+                builder: (context) =>
+                    const DoctorsPage(),
               ),
             );
           }
@@ -480,10 +661,12 @@ class HospitalHomePage extends StatelessWidget {
         height: 110,
         decoration: BoxDecoration(
           color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(15),
+          borderRadius:
+              BorderRadius.circular(15),
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment:
+              MainAxisAlignment.center,
           children: [
             Icon(
               icon,
@@ -512,7 +695,8 @@ class HospitalHomePage extends StatelessWidget {
     Widget page,
   ) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin:
+          const EdgeInsets.only(bottom: 12),
       child: ListTile(
         onTap: () {
           Navigator.push(
@@ -523,7 +707,8 @@ class HospitalHomePage extends StatelessWidget {
           );
         },
         leading: CircleAvatar(
-          backgroundColor: Colors.blue.withOpacity(0.1),
+          backgroundColor:
+              Colors.blue.withOpacity(0.1),
           child: Icon(
             icon,
             color: Colors.blue,
@@ -565,12 +750,16 @@ class _AppointmentPageState
   String department = "Cardiology";
   String doctor = "Dr. Raj Kumar";
 
-  final TextEditingController patientNameController =
+  final TextEditingController
+      patientNameController =
       TextEditingController();
+
   final TextEditingController ageController =
       TextEditingController();
+
   final TextEditingController phoneController =
       TextEditingController();
+
   final TextEditingController reasonController =
       TextEditingController();
 
@@ -605,7 +794,9 @@ class _AppointmentPageState
     }
   }
 
-  String _appointmentText(Map<String, String> appointment) {
+  String _appointmentText(
+    Map<String, String> appointment,
+  ) {
     return '''
 MediCare Hospital
 
@@ -625,18 +816,35 @@ Status: Appointment Booked Successfully
 ''';
   }
 
-  void _downloadAppointment(Map<String, String> appointment) {
-    final text = _appointmentText(appointment);
-    final blob = html.Blob([text], 'text/plain');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    final anchor = html.AnchorElement(href: url)
-      ..setAttribute('download', 'medicare_appointment.txt')
+  void _downloadAppointment(
+    Map<String, String> appointment,
+  ) {
+    final text =
+        _appointmentText(appointment);
+
+    final blob =
+        html.Blob([text], 'text/plain');
+
+    final url =
+        html.Url.createObjectUrlFromBlob(blob);
+
+    final anchor = html.AnchorElement(
+      href: url,
+    )
+      ..setAttribute(
+        'download',
+        'medicare_appointment.txt',
+      )
       ..click();
+
     html.Url.revokeObjectUrl(url);
   }
 
-  Future<void> _shareAppointment(Map<String, String> appointment) async {
-    final text = _appointmentText(appointment);
+  Future<void> _shareAppointment(
+    Map<String, String> appointment,
+  ) async {
+    final text =
+        _appointmentText(appointment);
 
     await Clipboard.setData(
       ClipboardData(text: text),
@@ -644,7 +852,8 @@ Status: Appointment Booked Successfully
 
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context)
+        .showSnackBar(
       const SnackBar(
         content: Text(
           "Appointment details copied. Paste them in WhatsApp, Gmail, or any app to share.",
@@ -660,7 +869,8 @@ Status: Appointment Booked Successfully
 
     if (appointmentDate == null ||
         appointmentTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context)
+          .showSnackBar(
         const SnackBar(
           content: Text(
             "Please select date and time.",
@@ -671,47 +881,64 @@ Status: Appointment Booked Successfully
     }
 
     bookedAppointments.add({
-      "patient": patientNameController.text.trim(),
-      "age": ageController.text.trim(),
+      "patient":
+          patientNameController.text.trim(),
+      "age":
+          ageController.text.trim(),
       "gender": gender,
-      "phone": phoneController.text.trim(),
+      "phone":
+          phoneController.text.trim(),
       "department": department,
       "doctor": doctor,
       "date":
           "${appointmentDate!.day}/${appointmentDate!.month}/${appointmentDate!.year}",
-      "time": appointmentTime!.format(context),
-      "reason": reasonController.text.trim().isEmpty
-          ? "Not specified"
-          : reasonController.text.trim(),
+      "time":
+          appointmentTime!.format(context),
+      "reason":
+          reasonController.text.trim().isEmpty
+              ? "Not specified"
+              : reasonController.text.trim(),
     });
 
-    final appointment = bookedAppointments.last;
+    final appointment =
+        bookedAppointments.last;
 
     showDialog(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text("Appointment Booked Successfully"),
+          title: const Text(
+            "Appointment Booked Successfully",
+          ),
           content: const Text(
             "Your appointment has been saved. You can download or share the appointment details.",
           ),
           actions: [
             TextButton.icon(
               onPressed: () {
-                _downloadAppointment(appointment);
+                _downloadAppointment(
+                  appointment,
+                );
               },
-              icon: const Icon(Icons.download),
-              label: const Text("Download"),
+              icon:
+                  const Icon(Icons.download),
+              label:
+                  const Text("Download"),
             ),
             TextButton.icon(
               onPressed: () async {
-                await _shareAppointment(appointment);
+                await _shareAppointment(
+                  appointment,
+                );
               },
               icon: const Icon(Icons.share),
               label: const Text("Share"),
             ),
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
+              onPressed: () =>
+                  Navigator.pop(
+                dialogContext,
+              ),
               child: const Text("OK"),
             ),
           ],
@@ -733,7 +960,8 @@ Status: Appointment Booked Successfully
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Book Appointment"),
+        title:
+            const Text("Book Appointment"),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
       ),
@@ -756,11 +984,15 @@ Status: Appointment Booked Successfully
               const SizedBox(height: 20),
 
               TextFormField(
-                controller: patientNameController,
-                decoration: const InputDecoration(
+                controller:
+                    patientNameController,
+                decoration:
+                    const InputDecoration(
                   labelText: "Patient Name",
-                  prefixIcon: Icon(Icons.person),
-                  border: OutlineInputBorder(),
+                  prefixIcon:
+                      Icon(Icons.person),
+                  border:
+                      OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null ||
@@ -775,11 +1007,15 @@ Status: Appointment Booked Successfully
 
               TextFormField(
                 controller: ageController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
+                keyboardType:
+                    TextInputType.number,
+                decoration:
+                    const InputDecoration(
                   labelText: "Age",
-                  prefixIcon: Icon(Icons.cake),
-                  border: OutlineInputBorder(),
+                  prefixIcon:
+                      Icon(Icons.cake),
+                  border:
+                      OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null ||
@@ -794,10 +1030,13 @@ Status: Appointment Booked Successfully
 
               DropdownButtonFormField<String>(
                 value: gender,
-                decoration: const InputDecoration(
+                decoration:
+                    const InputDecoration(
                   labelText: "Gender",
-                  prefixIcon: Icon(Icons.people),
-                  border: OutlineInputBorder(),
+                  prefixIcon:
+                      Icon(Icons.people),
+                  border:
+                      OutlineInputBorder(),
                 ),
                 items: const [
                   DropdownMenuItem(
@@ -824,11 +1063,16 @@ Status: Appointment Booked Successfully
 
               TextFormField(
                 controller: phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: "Phone Number",
-                  prefixIcon: Icon(Icons.phone),
-                  border: OutlineInputBorder(),
+                keyboardType:
+                    TextInputType.phone,
+                decoration:
+                    const InputDecoration(
+                  labelText:
+                      "Phone Number",
+                  prefixIcon:
+                      Icon(Icons.phone),
+                  border:
+                      OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null ||
@@ -853,32 +1097,40 @@ Status: Appointment Booked Successfully
 
               DropdownButtonFormField<String>(
                 value: department,
-                decoration: const InputDecoration(
+                decoration:
+                    const InputDecoration(
                   labelText: "Department",
-                  prefixIcon:
-                      Icon(Icons.local_hospital),
-                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(
+                    Icons.local_hospital,
+                  ),
+                  border:
+                      OutlineInputBorder(),
                 ),
                 items: const [
                   DropdownMenuItem(
                     value: "Cardiology",
-                    child: Text("Cardiology"),
+                    child:
+                        Text("Cardiology"),
                   ),
                   DropdownMenuItem(
                     value: "Neurology",
-                    child: Text("Neurology"),
+                    child:
+                        Text("Neurology"),
                   ),
                   DropdownMenuItem(
                     value: "Pediatrics",
-                    child: Text("Pediatrics"),
+                    child:
+                        Text("Pediatrics"),
                   ),
                   DropdownMenuItem(
                     value: "Orthopedics",
-                    child: Text("Orthopedics"),
+                    child:
+                        Text("Orthopedics"),
                   ),
                   DropdownMenuItem(
                     value: "General Medicine",
-                    child: Text("General Medicine"),
+                    child: Text(
+                        "General Medicine"),
                   ),
                 ],
                 onChanged: (value) {
@@ -892,23 +1144,29 @@ Status: Appointment Booked Successfully
 
               DropdownButtonFormField<String>(
                 value: doctor,
-                decoration: const InputDecoration(
+                decoration:
+                    const InputDecoration(
                   labelText: "Doctor",
-                  prefixIcon: Icon(Icons.person),
-                  border: OutlineInputBorder(),
+                  prefixIcon:
+                      Icon(Icons.person),
+                  border:
+                      OutlineInputBorder(),
                 ),
                 items: const [
                   DropdownMenuItem(
                     value: "Dr. Raj Kumar",
-                    child: Text("Dr. Raj Kumar"),
+                    child: Text(
+                        "Dr. Raj Kumar"),
                   ),
                   DropdownMenuItem(
                     value: "Dr. Priya Sharma",
-                    child: Text("Dr. Priya Sharma"),
+                    child: Text(
+                        "Dr. Priya Sharma"),
                   ),
                   DropdownMenuItem(
                     value: "Dr. Anil Reddy",
-                    child: Text("Dr. Anil Reddy"),
+                    child: Text(
+                        "Dr. Anil Reddy"),
                   ),
                 ],
                 onChanged: (value) {
@@ -931,9 +1189,7 @@ Status: Appointment Booked Successfully
                   label: Text(
                     appointmentDate == null
                         ? "Select Date"
-                        : "${appointmentDate!.day}/"
-                          "${appointmentDate!.month}/"
-                          "${appointmentDate!.year}",
+                        : "${appointmentDate!.day}/${appointmentDate!.month}/${appointmentDate!.year}",
                   ),
                 ),
               ),
@@ -960,14 +1216,18 @@ Status: Appointment Booked Successfully
               const SizedBox(height: 15),
 
               TextFormField(
-                controller: reasonController,
+                controller:
+                    reasonController,
                 maxLines: 4,
-                decoration: const InputDecoration(
+                decoration:
+                    const InputDecoration(
                   labelText:
                       "Health Problem / Reason",
                   alignLabelWithHint: true,
-                  prefixIcon: Icon(Icons.notes),
-                  border: OutlineInputBorder(),
+                  prefixIcon:
+                      Icon(Icons.notes),
+                  border:
+                      OutlineInputBorder(),
                 ),
               ),
 
@@ -977,16 +1237,21 @@ Status: Appointment Booked Successfully
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: submitAppointment,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
+                  onPressed:
+                      submitAppointment,
+                  style:
+                      ElevatedButton.styleFrom(
+                    backgroundColor:
+                        Colors.blue,
+                    foregroundColor:
+                        Colors.white,
                   ),
                   child: const Text(
                     "BOOK APPOINTMENT",
                     style: TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontWeight:
+                          FontWeight.bold,
                     ),
                   ),
                 ),
@@ -1003,7 +1268,8 @@ Status: Appointment Booked Successfully
 // MY APPOINTMENTS PAGE
 // ======================================================
 
-class MyAppointmentsPage extends StatefulWidget {
+class MyAppointmentsPage
+    extends StatefulWidget {
   const MyAppointmentsPage({super.key});
 
   @override
@@ -1011,144 +1277,217 @@ class MyAppointmentsPage extends StatefulWidget {
       _MyAppointmentsPageState();
 }
 
-class _MyAppointmentsPageState extends State<MyAppointmentsPage> {
+class _MyAppointmentsPageState
+    extends State<MyAppointmentsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("My Appointments"),
+        title:
+            const Text("My Appointments"),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
       ),
       body: bookedAppointments.isEmpty
           ? Center(
               child: Padding(
-                padding: const EdgeInsets.all(25),
+                padding:
+                    const EdgeInsets.all(25),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment:
+                      MainAxisAlignment.center,
                   children: [
                     Icon(
                       Icons.event_note,
                       size: 80,
-                      color: Colors.blue.shade200,
+                      color:
+                          Colors.blue.shade200,
                     ),
                     const SizedBox(height: 15),
                     const Text(
                       "No Appointments Yet",
                       style: TextStyle(
                         fontSize: 22,
-                        fontWeight: FontWeight.bold,
+                        fontWeight:
+                            FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 8),
                     const Text(
                       "Your successfully booked appointments will appear here.",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey),
+                      textAlign:
+                          TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.grey,
+                      ),
                     ),
                   ],
                 ),
               ),
             )
           : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: bookedAppointments.length,
-              itemBuilder: (context, index) {
-                final appointment = bookedAppointments[index];
+              padding:
+                  const EdgeInsets.all(16),
+              itemCount:
+                  bookedAppointments.length,
+              itemBuilder:
+                  (context, index) {
+                final appointment =
+                    bookedAppointments[index];
 
                 return Card(
-                  margin: const EdgeInsets.only(bottom: 16),
+                  margin:
+                      const EdgeInsets.only(
+                          bottom: 16),
                   elevation: 3,
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding:
+                        const EdgeInsets.all(16),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment:
+                          CrossAxisAlignment
+                              .start,
                       children: [
                         Row(
                           children: [
                             CircleAvatar(
-                              backgroundColor: Colors.blue.shade50,
-                              child: const Icon(
-                                Icons.calendar_month,
-                                color: Colors.blue,
+                              backgroundColor:
+                                  Colors.blue
+                                      .shade50,
+                              child:
+                                  const Icon(
+                                Icons
+                                    .calendar_month,
+                                color:
+                                    Colors.blue,
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(
+                                width: 12),
                             Expanded(
                               child: Text(
                                 "Appointment ${index + 1}",
-                                style: const TextStyle(
+                                style:
+                                    const TextStyle(
                                   fontSize: 19,
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight:
+                                      FontWeight
+                                          .bold,
                                 ),
                               ),
                             ),
                             const Icon(
-                              Icons.check_circle,
-                              color: Colors.green,
+                              Icons
+                                  .check_circle,
+                              color:
+                                  Colors.green,
                             ),
                           ],
                         ),
-                        const Divider(height: 25),
+
+                        const Divider(
+                            height: 25),
+
                         _appointmentDetail(
                           Icons.person,
                           "Patient",
-                          appointment["patient"]!,
+                          appointment[
+                              "patient"]!,
                         ),
+
                         _appointmentDetail(
                           Icons.cake,
                           "Age / Gender",
                           "${appointment["age"]} / ${appointment["gender"]}",
                         ),
+
                         _appointmentDetail(
                           Icons.phone,
                           "Phone",
-                          appointment["phone"]!,
+                          appointment[
+                              "phone"]!,
                         ),
+
                         _appointmentDetail(
                           Icons.local_hospital,
                           "Department",
-                          appointment["department"]!,
+                          appointment[
+                              "department"]!,
                         ),
+
                         _appointmentDetail(
                           Icons.person_outline,
                           "Doctor",
-                          appointment["doctor"]!,
+                          appointment[
+                              "doctor"]!,
                         ),
+
                         _appointmentDetail(
                           Icons.calendar_today,
                           "Date",
-                          appointment["date"]!,
+                          appointment[
+                              "date"]!,
                         ),
+
                         _appointmentDetail(
                           Icons.access_time,
                           "Time",
-                          appointment["time"]!,
+                          appointment[
+                              "time"]!,
                         ),
+
                         _appointmentDetail(
                           Icons.notes,
                           "Reason",
-                          appointment["reason"]!,
+                          appointment[
+                              "reason"]!,
                         ),
-                        const SizedBox(height: 8),
+
+                        const SizedBox(
+                            height: 8),
+
                         SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
+                          width:
+                              double.infinity,
+                          child:
+                              OutlinedButton
+                                  .icon(
                             onPressed: () {
                               _showCancelConfirmation(
                                 context,
                                 index,
-                                appointment["patient"]!,
+                                appointment[
+                                    "patient"]!,
                               );
                             },
-                            icon: const Icon(Icons.cancel_outlined, color: Colors.red),
-                            label: const Text(
-                              "Cancel Appointment",
-                              style: TextStyle(color: Colors.red),
+                            icon: const Icon(
+                              Icons
+                                  .cancel_outlined,
+                              color:
+                                  Colors.red,
                             ),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Colors.red),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            label:
+                                const Text(
+                              "Cancel Appointment",
+                              style:
+                                  TextStyle(
+                                color:
+                                    Colors.red,
+                              ),
+                            ),
+                            style:
+                                OutlinedButton
+                                    .styleFrom(
+                              side:
+                                  const BorderSide(
+                                color:
+                                    Colors.red,
+                              ),
+                              padding:
+                                  const EdgeInsets
+                                      .symmetric(
+                                vertical: 12,
+                              ),
                             ),
                           ),
                         ),
@@ -1170,32 +1509,52 @@ class _MyAppointmentsPageState extends State<MyAppointmentsPage> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text("Cancel Appointment?"),
+          title: const Text(
+            "Cancel Appointment?",
+          ),
           content: Text(
             "Are you sure you want to cancel the appointment for $patientName?",
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text("No"),
+              onPressed: () =>
+                  Navigator.pop(
+                dialogContext,
+              ),
+              child:
+                  const Text("No"),
             ),
             ElevatedButton(
               onPressed: () {
                 setState(() {
-                  bookedAppointments.removeAt(index);
+                  bookedAppointments
+                      .removeAt(index);
                 });
-                Navigator.pop(dialogContext);
-                ScaffoldMessenger.of(context).showSnackBar(
+
+                Navigator.pop(
+                  dialogContext,
+                );
+
+                ScaffoldMessenger.of(
+                        context)
+                    .showSnackBar(
                   const SnackBar(
-                    content: Text("Appointment cancelled successfully."),
+                    content: Text(
+                      "Appointment cancelled successfully.",
+                    ),
                   ),
                 );
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
+              style:
+                  ElevatedButton.styleFrom(
+                backgroundColor:
+                    Colors.red,
+                foregroundColor:
+                    Colors.white,
               ),
-              child: const Text("Yes, Cancel"),
+              child: const Text(
+                "Yes, Cancel",
+              ),
             ),
           ],
         );
@@ -1209,22 +1568,32 @@ class _MyAppointmentsPageState extends State<MyAppointmentsPage> {
     String value,
   ) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding:
+          const EdgeInsets.only(
+              bottom: 10),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: Colors.blue),
+          Icon(
+            icon,
+            size: 20,
+            color: Colors.blue,
+          ),
           const SizedBox(width: 10),
           SizedBox(
             width: 95,
             child: Text(
               title,
               style: const TextStyle(
-                fontWeight: FontWeight.bold,
+                fontWeight:
+                    FontWeight.bold,
               ),
             ),
           ),
-          Expanded(child: Text(value)),
+          Expanded(
+            child: Text(value),
+          ),
         ],
       ),
     );
@@ -1235,71 +1604,130 @@ class _MyAppointmentsPageState extends State<MyAppointmentsPage> {
 // EMERGENCY PAGE
 // ======================================================
 
-class EmergencyPage extends StatelessWidget {
+class EmergencyPage
+    extends StatelessWidget {
   const EmergencyPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Emergency Services"),
+        title: const Text(
+            "Emergency Services"),
         backgroundColor: Colors.red,
         foregroundColor: Colors.white,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding:
+            const EdgeInsets.all(16),
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(15),
+            borderRadius:
+                BorderRadius.circular(15),
             child: Image.network(
               'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=1000&q=80',
               height: 210,
               width: double.infinity,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
+              errorBuilder:
+                  (context, error,
+                      stackTrace) =>
+                      Container(
                 height: 210,
-                color: Colors.red.shade50,
-                child: const Icon(Icons.emergency, size: 80, color: Colors.red),
+                color:
+                    Colors.red.shade50,
+                child: const Icon(
+                  Icons.emergency,
+                  size: 80,
+                  color: Colors.red,
+                ),
               ),
             ),
           ),
+
           const SizedBox(height: 20),
+
           const Text(
             "Emergency Services",
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 27, fontWeight: FontWeight.bold),
+            textAlign:
+                TextAlign.center,
+            style: TextStyle(
+              fontSize: 27,
+              fontWeight:
+                  FontWeight.bold,
+            ),
           ),
+
           const SizedBox(height: 10),
+
           const Text(
             "Our emergency department provides immediate medical attention for urgent and serious health conditions.",
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, height: 1.5),
+            textAlign:
+                TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              height: 1.5,
+            ),
           ),
+
           const SizedBox(height: 20),
+
           Card(
             child: ListTile(
-              leading: const Icon(Icons.phone, color: Colors.red, size: 30),
-              title: const Text("Emergency Number", style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: const Text("108"),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              leading: const Icon(
+                Icons.phone,
+                color: Colors.red,
+                size: 30,
+              ),
+              title: const Text(
+                "Emergency Number",
+                style: TextStyle(
+                  fontWeight:
+                      FontWeight.bold,
+                ),
+              ),
+              subtitle:
+                  const Text("108"),
+              trailing:
+                  const Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+              ),
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const EmergencyContactPage()),
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        const EmergencyContactPage(),
+                  ),
                 );
               },
             ),
           ),
+
           const SizedBox(height: 10),
+
           const Card(
             child: Padding(
-              padding: EdgeInsets.all(16),
+              padding:
+                  EdgeInsets.all(16),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment
+                        .start,
                 children: [
-                  Text("Emergency Care Includes", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(
+                    "Emergency Care Includes",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight:
+                          FontWeight.bold,
+                    ),
+                  ),
                   SizedBox(height: 10),
-                  Text("• 24-hour emergency support\n• Ambulance assistance\n• Immediate doctor consultation\n• Critical care support"),
+                  Text(
+                    "• 24-hour emergency support\n• Ambulance assistance\n• Immediate doctor consultation\n• Critical care support",
+                  ),
                 ],
               ),
             ),
@@ -1314,66 +1742,132 @@ class EmergencyPage extends StatelessWidget {
 // EMERGENCY CONTACT PAGE
 // ======================================================
 
-class EmergencyContactPage extends StatelessWidget {
-  const EmergencyContactPage({super.key});
+class EmergencyContactPage
+    extends StatelessWidget {
+  const EmergencyContactPage({
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Emergency Contact"),
+        title:
+            const Text("Emergency Contact"),
         backgroundColor: Colors.red,
         foregroundColor: Colors.white,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding:
+            const EdgeInsets.all(20),
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius:
+                BorderRadius.circular(16),
             child: Image.network(
               "https://worldarchitecture.org/files/bin/?file=mnbg7tx8qaakashexterior7.jpg",
               height: 210,
               width: double.infinity,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
+              errorBuilder:
+                  (context, error,
+                      stackTrace) =>
+                      Container(
                 height: 210,
-                color: Colors.red.shade50,
-                child: const Icon(Icons.emergency, size: 80, color: Colors.red),
+                color:
+                    Colors.red.shade50,
+                child: const Icon(
+                  Icons.emergency,
+                  size: 80,
+                  color: Colors.red,
+                ),
               ),
             ),
           ),
+
           const SizedBox(height: 15),
+
           const Text(
             "Emergency Contact Information",
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            textAlign:
+                TextAlign.center,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight:
+                  FontWeight.bold,
+            ),
           ),
+
           const SizedBox(height: 10),
+
           const Text(
             "Please use the contact information below for emergency assistance.",
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16),
+            textAlign:
+                TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+            ),
           ),
+
           const SizedBox(height: 25),
-          _emergencyContact("Emergency Number", "108", Icons.phone),
-          _emergencyContact("Hospital Reception", "+91 98765 43210", Icons.local_hospital),
-          _emergencyContact("Ambulance Service", "+91 98765 43213", Icons.airport_shuttle),
+
+          _emergencyContact(
+            "Emergency Number",
+            "108",
+            Icons.phone,
+          ),
+
+          _emergencyContact(
+            "Hospital Reception",
+            "+91 98765 43210",
+            Icons.local_hospital,
+          ),
+
+          _emergencyContact(
+            "Ambulance Service",
+            "+91 98765 43213",
+            Icons.airport_shuttle,
+          ),
         ],
       ),
     );
   }
 
-  Widget _emergencyContact(String title, String number, IconData icon) {
+  Widget _emergencyContact(
+    String title,
+    String number,
+    IconData icon,
+  ) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 14),
+      margin:
+          const EdgeInsets.only(
+              bottom: 14),
       child: ListTile(
-        contentPadding: const EdgeInsets.all(14),
+        contentPadding:
+            const EdgeInsets.all(14),
         leading: CircleAvatar(
-          backgroundColor: Colors.red.shade50,
-          child: Icon(icon, color: Colors.red),
+          backgroundColor:
+              Colors.red.shade50,
+          child: Icon(
+            icon,
+            color: Colors.red,
+          ),
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(number, style: const TextStyle(fontSize: 16)),
+        title: Text(
+          title,
+          style:
+              const TextStyle(
+            fontWeight:
+                FontWeight.bold,
+          ),
+        ),
+        subtitle: Text(
+          number,
+          style:
+              const TextStyle(
+            fontSize: 16,
+          ),
+        ),
       ),
     );
   }
@@ -1383,61 +1877,128 @@ class EmergencyContactPage extends StatelessWidget {
 // ABOUT HOSPITAL PAGE
 // ======================================================
 
-class AboutHospitalPage extends StatelessWidget {
+class AboutHospitalPage
+    extends StatelessWidget {
   const AboutHospitalPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("About Hospital"),
+        title:
+            const Text("About Hospital"),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding:
+            const EdgeInsets.all(16),
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(15),
+            borderRadius:
+                BorderRadius.circular(15),
             child: Image.network(
               'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1000&q=80',
               height: 220,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
+              errorBuilder:
+                  (context, error,
+                      stackTrace) =>
+                      Container(
                 height: 220,
-                color: Colors.blue.shade50,
-                child: const Icon(Icons.local_hospital, size: 80, color: Colors.blue),
+                color:
+                    Colors.blue.shade50,
+                child: const Icon(
+                  Icons.local_hospital,
+                  size: 80,
+                  color: Colors.blue,
+                ),
               ),
             ),
           ),
+
           const SizedBox(height: 20),
-          const Text("MediCare Hospital", textAlign: TextAlign.center, style: TextStyle(fontSize: 27, fontWeight: FontWeight.bold)),
+
+          const Text(
+            "MediCare Hospital",
+            textAlign:
+                TextAlign.center,
+            style: TextStyle(
+              fontSize: 27,
+              fontWeight:
+                  FontWeight.bold,
+            ),
+          ),
+
           const SizedBox(height: 15),
+
           const Text(
             "MediCare Hospital provides modern healthcare facilities and experienced doctors to support patients with quality medical services.",
-            style: TextStyle(fontSize: 16, height: 1.6),
+            style: TextStyle(
+              fontSize: 16,
+              height: 1.6,
+            ),
           ),
+
           const SizedBox(height: 15),
+
           const Text(
             "Our hospital focuses on patient care, medical treatment, emergency services and specialist consultations. We aim to provide a comfortable and supportive environment for patients and their families.",
-            style: TextStyle(fontSize: 16, height: 1.6),
+            style: TextStyle(
+              fontSize: 16,
+              height: 1.6,
+            ),
           ),
+
           const SizedBox(height: 20),
-          _infoTile(Icons.medical_services, "Quality Care", "Patient-focused medical services and treatment."),
-          _infoTile(Icons.people, "Experienced Doctors", "Specialists from different medical departments."),
-          _infoTile(Icons.access_time, "24/7 Support", "Emergency services are available throughout the day."),
+
+          _infoTile(
+            Icons.medical_services,
+            "Quality Care",
+            "Patient-focused medical services and treatment.",
+          ),
+
+          _infoTile(
+            Icons.people,
+            "Experienced Doctors",
+            "Specialists from different medical departments.",
+          ),
+
+          _infoTile(
+            Icons.access_time,
+            "24/7 Support",
+            "Emergency services are available throughout the day.",
+          ),
         ],
       ),
     );
   }
 
-  Widget _infoTile(IconData icon, String title, String text) {
+  Widget _infoTile(
+    IconData icon,
+    String title,
+    String text,
+  ) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin:
+          const EdgeInsets.only(
+              bottom: 10),
       child: ListTile(
-        leading: Icon(icon, color: Colors.blue, size: 30),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(text),
+        leading: Icon(
+          icon,
+          color: Colors.blue,
+          size: 30,
+        ),
+        title: Text(
+          title,
+          style:
+              const TextStyle(
+            fontWeight:
+                FontWeight.bold,
+          ),
+        ),
+        subtitle:
+            Text(text),
       ),
     );
   }
@@ -1447,54 +2008,122 @@ class AboutHospitalPage extends StatelessWidget {
 // OPENING HOURS PAGE
 // ======================================================
 
-class OpeningHoursPage extends StatelessWidget {
-  const OpeningHoursPage({super.key});
+class OpeningHoursPage
+    extends StatelessWidget {
+  const OpeningHoursPage({
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Opening Hours"),
+        title:
+            const Text("Opening Hours"),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding:
+            const EdgeInsets.all(16),
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(15),
+            borderRadius:
+                BorderRadius.circular(15),
             child: Image.network(
               'https://images.unsplash.com/photo-1516841273335-e39b37888115?auto=format&fit=crop&w=1000&q=80',
               height: 210,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
+              errorBuilder:
+                  (context, error,
+                      stackTrace) =>
+                      Container(
                 height: 210,
-                color: Colors.blue.shade50,
-                child: const Icon(Icons.access_time, size: 80, color: Colors.blue),
+                color:
+                    Colors.blue.shade50,
+                child: const Icon(
+                  Icons.access_time,
+                  size: 80,
+                  color: Colors.blue,
+                ),
               ),
             ),
           ),
+
           const SizedBox(height: 20),
-          const Text("Hospital Opening Hours", textAlign: TextAlign.center, style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
+
+          const Text(
+            "Hospital Opening Hours",
+            textAlign:
+                TextAlign.center,
+            style: TextStyle(
+              fontSize: 25,
+              fontWeight:
+                  FontWeight.bold,
+            ),
+          ),
+
           const SizedBox(height: 10),
-          const Text("Different hospital services operate at different times. Emergency services remain available 24 hours.", textAlign: TextAlign.center, style: TextStyle(fontSize: 16, height: 1.5)),
+
+          const Text(
+            "Different hospital services operate at different times. Emergency services remain available 24 hours.",
+            textAlign:
+                TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              height: 1.5,
+            ),
+          ),
+
           const SizedBox(height: 25),
-          _timeCard("Emergency Services", "24 Hours"),
-          _timeCard("Outpatient Department", "9:00 AM - 6:00 PM"),
-          _timeCard("Pharmacy", "24 Hours"),
-          _timeCard("Laboratory", "8:00 AM - 8:00 PM"),
+
+          _timeCard(
+            "Emergency Services",
+            "24 Hours",
+          ),
+
+          _timeCard(
+            "Outpatient Department",
+            "9:00 AM - 6:00 PM",
+          ),
+
+          _timeCard(
+            "Pharmacy",
+            "24 Hours",
+          ),
+
+          _timeCard(
+            "Laboratory",
+            "8:00 AM - 8:00 PM",
+          ),
         ],
       ),
     );
   }
 
-  Widget _timeCard(String title, String time) {
+  Widget _timeCard(
+    String title,
+    String time,
+  ) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin:
+          const EdgeInsets.only(
+              bottom: 12),
       child: ListTile(
-        leading: const Icon(Icons.access_time, color: Colors.blue),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(time),
+        leading: const Icon(
+          Icons.access_time,
+          color: Colors.blue,
+        ),
+        title: Text(
+          title,
+          style:
+              const TextStyle(
+            fontWeight:
+                FontWeight.bold,
+          ),
+        ),
+        subtitle:
+            Text(time),
       ),
     );
   }
@@ -1504,8 +2133,11 @@ class OpeningHoursPage extends StatelessWidget {
 // FACILITIES PAGE
 // ======================================================
 
-class FacilitiesPage extends StatelessWidget {
-  const FacilitiesPage({super.key});
+class FacilitiesPage
+    extends StatelessWidget {
+  const FacilitiesPage({
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1550,405 +2182,151 @@ class FacilitiesPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Hospital Facilities"),
+        title:
+            const Text("Hospital Facilities"),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding:
+            const EdgeInsets.all(16),
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius:
+                BorderRadius.circular(16),
             child: Image.network(
               "https://images.unsplash.com/photo-1538108149393-fbbd81895907?auto=format&fit=crop&w=1200&q=80",
               height: 220,
               width: double.infinity,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
+              errorBuilder:
+                  (context, error,
+                      stackTrace) =>
+                      Container(
                 height: 220,
-                color: Colors.blue.shade50,
-                child: const Icon(Icons.local_hospital, size: 80, color: Colors.blue),
+                color:
+                    Colors.blue.shade50,
+                child: const Icon(
+                  Icons.local_hospital,
+                  size: 80,
+                  color: Colors.blue,
+                ),
               ),
             ),
           ),
+
           const SizedBox(height: 20),
+
           const Text(
             "Our Hospital Facilities",
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 27, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            "Modern facilities support diagnosis, treatment, emergency care and patient comfort at MediCare Hospital.",
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, height: 1.5),
-          ),
-          const SizedBox(height: 22),
-          ...facilities.map((facility) => Card(
-                margin: const EdgeInsets.only(bottom: 16),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Image.network(
-                      facility[2] as String,
-                      height: 150,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        height: 150,
-                        color: Colors.blue.shade50,
-                        child: Center(
-                          child: Icon(facility[3] as IconData, size: 60, color: Colors.blue),
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(facility[3] as IconData, color: Colors.blue, size: 30),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(facility[0] as String, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 6),
-                                Text(facility[1] as String, style: const TextStyle(fontSize: 14, height: 1.4)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              )),
-        ],
-      ),
-    );
-  }
-}
-
-// ======================================================
-// CONTACT PAGE
-// ======================================================
-
-class ContactPage extends StatelessWidget {
-  const ContactPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Contact Hospital"),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: Image.network(
-              'https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=1000&q=80',
-              height: 210,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                height: 210,
-                color: Colors.blue.shade50,
-                child: const Icon(Icons.contact_phone, size: 80, color: Colors.blue),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Text("Hospital Contact Numbers", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          const Text("Contact the appropriate hospital service using the information below.", style: TextStyle(fontSize: 16)),
-          const SizedBox(height: 20),
-          _contactCard("Emergency", "108", Icons.emergency, Colors.red),
-          _contactCard("Hospital Reception", "+91 98765 43210", Icons.local_hospital, Colors.blue),
-          _contactCard("Appointment Desk", "+91 98765 43211", Icons.calendar_month, Colors.green),
-          _contactCard("Pharmacy", "+91 98765 43212", Icons.medication, Colors.orange),
-          _contactCard("Ambulance", "+91 98765 43213", Icons.airport_shuttle, Colors.purple),
-          const SizedBox(height: 10),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text("Hospital Address", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 8),
-                  Text("MediCare Hospital\nMain Road\nAndhra Pradesh, India"),
-                  SizedBox(height: 15),
-                  Text("Email", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 8),
-                  Text("info@medicarehospital.com"),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _contactCard(String title, String number, IconData icon, Color color) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(12),
-        leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.15),
-          child: Icon(icon, color: color),
-        ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(number, style: const TextStyle(fontSize: 16)),
-        trailing: Icon(Icons.phone, color: color),
-      ),
-    );
-  }
-}
-
-// ======================================================
-// DOCTORS PAGE
-// ======================================================
-
-class DoctorsPage extends StatelessWidget {
-  const DoctorsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Our Doctors"),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: const [
-          DoctorCard(name: "Dr. Raj Kumar", department: "Cardiology", imageUrl: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=300&q=80"),
-          DoctorCard(name: "Dr. Priya Sharma", department: "Neurology", imageUrl: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=300&q=80"),
-          DoctorCard(name: "Dr. Anil Reddy", department: "Orthopedics", imageUrl: "https://images.unsplash.com/photo-1618498082410-b4aa22193b38?auto=format&fit=crop&w=300&q=80"),
-          DoctorCard(name: "Dr. Sneha Rao", department: "Pediatrics", imageUrl: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?auto=format&fit=crop&w=300&q=80"),
-        ],
-      ),
-    );
-  }
-}
-
-class DoctorCard extends StatelessWidget {
-  final String name;
-  final String department;
-  final String imageUrl;
-
-  const DoctorCard({
-    super.key,
-    required this.name,
-    required this.department,
-    required this.imageUrl,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 15),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(40),
-              child: Image.network(
-                imageUrl,
-                width: 70,
-                height: 70,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  width: 70,
-                  height: 70,
-                  color: Colors.blue.shade50,
-                  child: const Icon(Icons.person, size: 40, color: Colors.blue),
-                ),
-              ),
-            ),
-            const SizedBox(width: 15),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
-                  const SizedBox(height: 5),
-                  Text(department, style: const TextStyle(color: Colors.blue)),
-                  const SizedBox(height: 5),
-                  const Text("Experienced medical specialist", style: TextStyle(color: Colors.grey)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ======================================================
-// DEPARTMENTS PAGE
-// ======================================================
-
-class DepartmentsPage extends StatelessWidget {
-  const DepartmentsPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final departments = [
-      {
-        "name": "Cardiology",
-        "description": "Heart and blood vessel care",
-        "image": "https://images.unsplash.com/photo-1530026405186-ed1f139313f8?auto=format&fit=crop&w=1200&q=90",
-        "icon": Icons.favorite,
-      },
-      {
-        "name": "Neurology",
-        "description": "Brain and nervous system care",
-        "image": "https://images.unsplash.com/photo-1559757175-0eb30cd8c063?auto=format&fit=crop&w=1200&q=90",
-        "icon": Icons.psychology,
-      },
-      {
-        "name": "Pediatrics",
-        "description": "Healthcare for children and infants",
-        "image": "https://images.unsplash.com/photo-1476703993599-0035a21b17a9?auto=format&fit=crop&w=1200&q=90",
-        "icon": Icons.child_care,
-      },
-      {
-        "name": "Orthopedics",
-        "description": "Bone, joint and muscle care",
-        "image": "https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&w=1200&q=90",
-        "icon": Icons.accessibility_new,
-      },
-      {
-        "name": "General Medicine",
-        "description": "Diagnosis and treatment of common illnesses",
-        "image": "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1200&q=90",
-        "icon": Icons.medical_services,
-      },
-      {
-        "name": "Dermatology",
-        "description": "Skin, hair and nail care",
-        "image": "https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?auto=format&fit=crop&w=1200&q=90",
-        "icon": Icons.face,
-      },
-      {
-        "name": "ENT",
-        "description": "Ear, nose and throat care",
-        "image": "https://images.unsplash.com/photo-1584515933487-779824d29309?auto=format&fit=crop&w=1200&q=90",
-        "icon": Icons.hearing,
-      },
-      {
-        "name": "Gynecology",
-        "description": "Women's health and maternity care",
-        "image": "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=1200&q=90",
-        "icon": Icons.pregnant_woman,
-      },
-    ];
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Departments"),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const Text(
-            "Our Departments",
+            textAlign:
+                TextAlign.center,
             style: TextStyle(
               fontSize: 27,
-              fontWeight: FontWeight.bold,
+              fontWeight:
+                  FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
+
+          const SizedBox(height: 10),
+
           const Text(
-            "Explore our specialist departments and learn about the type of care provided by each team.",
+            "Modern facilities support diagnosis, treatment, emergency care and patient comfort at MediCare Hospital.",
+            textAlign:
+                TextAlign.center,
             style: TextStyle(
               fontSize: 16,
-              color: Colors.grey,
               height: 1.5,
             ),
           ),
-          const SizedBox(height: 20),
-          ...departments.map(
-            (department) => Card(
-              margin: const EdgeInsets.only(bottom: 18),
-              elevation: 3,
-              clipBehavior: Clip.antiAlias,
+
+          const SizedBox(height: 22),
+
+          ...facilities.map(
+            (facility) => Card(
+              margin:
+                  const EdgeInsets.only(
+                      bottom: 16),
+              clipBehavior:
+                  Clip.antiAlias,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment
+                        .start,
                 children: [
-                  SizedBox(
-                    width: double.infinity,
-                    height: 190,
-                    child: Image.network(
-                      department["image"] as String,
-                      fit: BoxFit.cover,
-                      filterQuality: FilterQuality.high,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: Colors.blue.shade50,
-                          child: Icon(
-                            department["icon"] as IconData,
-                            size: 70,
-                            color: Colors.blue,
-                          ),
-                        );
-                      },
+                  Image.network(
+                    facility[2] as String,
+                    height: 150,
+                    width:
+                        double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder:
+                        (context,
+                            error,
+                            stackTrace) =>
+                            Container(
+                      height: 150,
+                      color: Colors
+                          .blue.shade50,
+                      child: Center(
+                        child: Icon(
+                          facility[3]
+                              as IconData,
+                          size: 60,
+                          color:
+                              Colors.blue,
+                        ),
+                      ),
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.all(15),
+                    padding:
+                        const EdgeInsets
+                            .all(14),
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment:
+                          CrossAxisAlignment
+                              .start,
                       children: [
-                        CircleAvatar(
-                          radius: 22,
-                          backgroundColor: Colors.blue.shade50,
-                          child: Icon(
-                            department["icon"] as IconData,
-                            color: Colors.blue,
-                          ),
+                        Icon(
+                          facility[3]
+                              as IconData,
+                          color:
+                              Colors.blue,
+                          size: 30,
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(
+                            width: 12),
                         Expanded(
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment:
+                                CrossAxisAlignment
+                                    .start,
                             children: [
                               Text(
-                                department["name"] as String,
-                                style: const TextStyle(
+                                facility[0]
+                                    as String,
+                                style:
+                                    const TextStyle(
                                   fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight:
+                                      FontWeight
+                                          .bold,
                                 ),
                               ),
-                              const SizedBox(height: 5),
+                              const SizedBox(
+                                  height: 6),
                               Text(
-                                department["description"] as String,
-                                style: const TextStyle(
+                                facility[1]
+                                    as String,
+                                style:
+                                    const TextStyle(
                                   fontSize: 14,
-                                  color: Colors.grey,
+                                  height: 1.4,
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        const Icon(
-                          Icons.arrow_forward_ios,
-                          size: 16,
-                          color: Colors.grey,
                         ),
                       ],
                     ),
@@ -1963,3 +2341,698 @@ class DepartmentsPage extends StatelessWidget {
   }
 }
 
+// ======================================================
+// CONTACT PAGE
+// ======================================================
+
+class ContactPage
+    extends StatelessWidget {
+  const ContactPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title:
+            const Text("Contact Hospital"),
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+      ),
+      body: ListView(
+        padding:
+            const EdgeInsets.all(16),
+        children: [
+          ClipRRect(
+            borderRadius:
+                BorderRadius.circular(15),
+            child: Image.network(
+              'https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=1000&q=80',
+              height: 210,
+              fit: BoxFit.cover,
+              errorBuilder:
+                  (context, error,
+                      stackTrace) =>
+                      Container(
+                height: 210,
+                color:
+                    Colors.blue.shade50,
+                child: const Icon(
+                  Icons.contact_phone,
+                  size: 80,
+                  color: Colors.blue,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          const Text(
+            "Hospital Contact Numbers",
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight:
+                  FontWeight.bold,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          const Text(
+            "Contact the appropriate hospital service using the information below.",
+            style: TextStyle(
+              fontSize: 16,
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          _contactCard(
+            "Emergency",
+            "108",
+            Icons.emergency,
+            Colors.red,
+          ),
+
+          _contactCard(
+            "Hospital Reception",
+            "+91 98765 43210",
+            Icons.local_hospital,
+            Colors.blue,
+          ),
+
+          _contactCard(
+            "Appointment Desk",
+            "+91 98765 43211",
+            Icons.calendar_month,
+            Colors.green,
+          ),
+
+          _contactCard(
+            "Pharmacy",
+            "+91 98765 43212",
+            Icons.medication,
+            Colors.orange,
+          ),
+
+          _contactCard(
+            "Ambulance",
+            "+91 98765 43213",
+            Icons.airport_shuttle,
+            Colors.purple,
+          ),
+
+          const SizedBox(height: 10),
+
+          Card(
+            child: Padding(
+              padding:
+                  const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    "Hospital Address",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight:
+                          FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    "MediCare Hospital\nMain Road\nAndhra Pradesh, India",
+                  ),
+                  SizedBox(height: 15),
+                  Text(
+                    "Email",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight:
+                          FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    "info@medicarehospital.com",
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _contactCard(
+    String title,
+    String number,
+    IconData icon,
+    Color color,
+  ) {
+    return Card(
+      margin:
+          const EdgeInsets.only(
+              bottom: 12),
+      child: ListTile(
+        contentPadding:
+            const EdgeInsets.all(12),
+        leading: CircleAvatar(
+          backgroundColor:
+              color.withOpacity(0.15),
+          child: Icon(
+            icon,
+            color: color,
+          ),
+        ),
+        title: Text(
+          title,
+          style:
+              const TextStyle(
+            fontWeight:
+                FontWeight.bold,
+          ),
+        ),
+        subtitle: Text(
+          number,
+          style:
+              const TextStyle(
+            fontSize: 16,
+          ),
+        ),
+        trailing: Icon(
+          Icons.phone,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
+// ======================================================
+// DOCTORS PAGE WITH VOTING / RATING
+// ======================================================
+
+class DoctorsPage
+    extends StatelessWidget {
+  const DoctorsPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title:
+            const Text("Our Doctors"),
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+      ),
+      body: ListView(
+        padding:
+            const EdgeInsets.all(16),
+        children: const [
+          DoctorCard(
+            name: "Dr. Raj Kumar",
+            department: "Cardiology",
+            imageUrl:
+                "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=300&q=80",
+          ),
+          DoctorCard(
+            name: "Dr. Priya Sharma",
+            department: "Neurology",
+            imageUrl:
+                "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=300&q=80",
+          ),
+          DoctorCard(
+            name: "Dr. Anil Reddy",
+            department: "Orthopedics",
+            imageUrl:
+                "https://images.unsplash.com/photo-1618498082410-b4aa22193b38?auto=format&fit=crop&w=300&q=80",
+          ),
+          DoctorCard(
+            name: "Dr. Sneha Rao",
+            department: "Pediatrics",
+            imageUrl:
+                "https://images.unsplash.com/photo-1594824476967-48c8b964273f?auto=format&fit=crop&w=300&q=80",
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class DoctorCard
+    extends StatefulWidget {
+  final String name;
+  final String department;
+  final String imageUrl;
+
+  const DoctorCard({
+    super.key,
+    required this.name,
+    required this.department,
+    required this.imageUrl,
+  });
+
+  @override
+  State<DoctorCard> createState() =>
+      _DoctorCardState();
+}
+
+class _DoctorCardState
+    extends State<DoctorCard> {
+  int selectedRating = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin:
+          const EdgeInsets.only(
+              bottom: 15),
+      elevation: 3,
+      child: Padding(
+        padding:
+            const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                ClipRRect(
+                  borderRadius:
+                      BorderRadius.circular(
+                          40),
+                  child: Image.network(
+                    widget.imageUrl,
+                    width: 70,
+                    height: 70,
+                    fit: BoxFit.cover,
+                    errorBuilder:
+                        (context, error,
+                            stackTrace) =>
+                            Container(
+                      width: 70,
+                      height: 70,
+                      color:
+                          Colors.blue.shade50,
+                      child:
+                          const Icon(
+                        Icons.person,
+                        size: 40,
+                        color:
+                            Colors.blue,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 15),
+
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment
+                            .start,
+                    children: [
+                      Text(
+                        widget.name,
+                        style:
+                            const TextStyle(
+                          fontWeight:
+                              FontWeight.bold,
+                          fontSize: 17,
+                        ),
+                      ),
+
+                      const SizedBox(
+                          height: 5),
+
+                      Text(
+                        widget.department,
+                        style:
+                            const TextStyle(
+                          color:
+                              Colors.blue,
+                          fontWeight:
+                              FontWeight.w500,
+                        ),
+                      ),
+
+                      const SizedBox(
+                          height: 5),
+
+                      const Text(
+                        "Experienced medical specialist",
+                        style:
+                            TextStyle(
+                          color:
+                              Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            const Divider(
+                height: 25),
+
+            const Align(
+              alignment:
+                  Alignment.centerLeft,
+              child: Text(
+                "Rate this doctor",
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight:
+                      FontWeight.bold,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            Row(
+              children:
+                  List.generate(
+                5,
+                (index) {
+                  final starNumber =
+                      index + 1;
+
+                  return IconButton(
+                    padding:
+                        EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints(),
+                    onPressed: () {
+                      setState(() {
+                        selectedRating =
+                            starNumber;
+                      });
+
+                      ScaffoldMessenger
+                              .of(context)
+                          .showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            "You rated ${widget.name} $starNumber/5",
+                          ),
+                          duration:
+                              const Duration(
+                            seconds: 2,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: Icon(
+                      starNumber <=
+                              selectedRating
+                          ? Icons.star
+                          : Icons.star_border,
+                      color:
+                          Colors.amber,
+                      size: 30,
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            const SizedBox(height: 5),
+
+            Text(
+              selectedRating == 0
+                  ? "No rating given"
+                  : "Your rating: $selectedRating / 5",
+              style:
+                  const TextStyle(
+                color: Colors.grey,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ======================================================
+// DEPARTMENTS PAGE
+// ======================================================
+
+class DepartmentsPage
+    extends StatelessWidget {
+  const DepartmentsPage({
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final departments = [
+      {
+        "name": "Cardiology",
+        "description":
+            "Heart and blood vessel care",
+        "image":
+            "https://images.unsplash.com/photo-1530026405186-ed1f139313f8?auto=format&fit=crop&w=1200&q=90",
+        "icon": Icons.favorite,
+      },
+      {
+        "name": "Neurology",
+        "description":
+            "Brain and nervous system care",
+        "image":
+            "https://images.unsplash.com/photo-1559757175-0eb30cd8c063?auto=format&fit=crop&w=1200&q=90",
+        "icon": Icons.psychology,
+      },
+      {
+        "name": "Pediatrics",
+        "description":
+            "Healthcare for children and infants",
+        "image":
+            "https://images.unsplash.com/photo-1476703993599-0035a21b17a9?auto=format&fit=crop&w=1200&q=90",
+        "icon": Icons.child_care,
+      },
+      {
+        "name": "Orthopedics",
+        "description":
+            "Bone, joint and muscle care",
+        "image":
+            "https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&w=1200&q=90",
+        "icon":
+            Icons.accessibility_new,
+      },
+      {
+        "name": "General Medicine",
+        "description":
+            "Diagnosis and treatment of common illnesses",
+        "image":
+            "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1200&q=90",
+        "icon":
+            Icons.medical_services,
+      },
+      {
+        "name": "Dermatology",
+        "description":
+            "Skin, hair and nail care",
+        "image":
+            "https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?auto=format&fit=crop&w=1200&q=90",
+        "icon": Icons.face,
+      },
+      {
+        "name": "ENT",
+        "description":
+            "Ear, nose and throat care",
+        "image":
+            "https://images.unsplash.com/photo-1584515933487-779824d29309?auto=format&fit=crop&w=1200&q=90",
+        "icon": Icons.hearing,
+      },
+      {
+        "name": "Gynecology",
+        "description":
+            "Women's health and maternity care",
+        "image":
+            "https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=1200&q=90",
+        "icon":
+            Icons.pregnant_woman,
+      },
+    ];
+
+    return Scaffold(
+      appBar: AppBar(
+        title:
+            const Text("Departments"),
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+      ),
+      body: ListView(
+        padding:
+            const EdgeInsets.all(16),
+        children: [
+          const Text(
+            "Our Departments",
+            style: TextStyle(
+              fontSize: 27,
+              fontWeight:
+                  FontWeight.bold,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          const Text(
+            "Explore our specialist departments and learn about the type of care provided by each team.",
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey,
+              height: 1.5,
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          GridView.builder(
+            shrinkWrap: true,
+            physics:
+                const NeverScrollableScrollPhysics(),
+            itemCount:
+                departments.length,
+            gridDelegate:
+                const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 16,
+              childAspectRatio: 0.78,
+            ),
+            itemBuilder:
+                (context, index) {
+              final department =
+                  departments[index];
+
+              return Card(
+                elevation: 3,
+                clipBehavior:
+                    Clip.antiAlias,
+                shape:
+                    RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(
+                          12),
+                ),
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment
+                          .start,
+                  children: [
+                    AspectRatio(
+                      // 9:9 = square image
+                      aspectRatio: 9 / 9,
+                      child: Image.network(
+                        department["image"]
+                            as String,
+                        width:
+                            double.infinity,
+                        fit: BoxFit.cover,
+                        filterQuality:
+                            FilterQuality.high,
+                        errorBuilder:
+                            (context,
+                                error,
+                                stackTrace) {
+                          return Container(
+                            color: Colors
+                                .blue
+                                .shade50,
+                            child: Icon(
+                              department[
+                                      "icon"]
+                                  as IconData,
+                              size: 55,
+                              color:
+                                  Colors.blue,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+
+                    Expanded(
+                      child: Padding(
+                        padding:
+                            const EdgeInsets
+                                .all(10),
+                        child: Column(
+                          crossAxisAlignment:
+                              CrossAxisAlignment
+                                  .start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  department[
+                                          "icon"]
+                                      as IconData,
+                                  color:
+                                      Colors.blue,
+                                  size: 21,
+                                ),
+                                const SizedBox(
+                                    width: 7),
+                                Expanded(
+                                  child:
+                                      Text(
+                                    department[
+                                            "name"]
+                                        as String,
+                                    maxLines: 1,
+                                    overflow:
+                                        TextOverflow
+                                            .ellipsis,
+                                    style:
+                                        const TextStyle(
+                                      fontSize:
+                                          16,
+                                      fontWeight:
+                                          FontWeight
+                                              .bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(
+                                height: 6),
+
+                            Text(
+                              department[
+                                      "description"]
+                                  as String,
+                              maxLines: 2,
+                              overflow:
+                                  TextOverflow
+                                      .ellipsis,
+                              style:
+                                  const TextStyle(
+                                fontSize: 12,
+                                color:
+                                    Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
